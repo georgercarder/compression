@@ -25,7 +25,7 @@ library Compression {
     // just compresses all zeros
     function compressZeros(bytes memory input) internal pure returns (bytes memory ret) {
         uint256 inputLength = input.length;
-        ret = new bytes(inputLength * 3); // overdo it
+        ret = new bytes(inputLength + 1);
         uint256 retIdx;
 
         uint256 idx;
@@ -98,8 +98,9 @@ library Compression {
         retIdx = _setLength(ret, retIdx, length);
         for (uint256 i = zs.end; i < inputLength; ++i) {
             ret[retIdx++] = input[i];
+            if (retIdx >= inputLength) break;
         }
-        if (retIdx < input.length) {
+        if (retIdx < inputLength) {
             // compression was favorable
             ret[retIdx++] = bytes1(uint8(FLAG_IS_COMPRESSED));
             assembly {
@@ -151,6 +152,7 @@ library Compression {
             idx = 0;
             ret = new bytes(totalLength);
             uint256 retIdx;
+            uint256 inputIdx;
             while (idx < inputLength) {
                 flag = uint256(uint8(input[idx])) & FLAG_ZERO_MASK;
                 (length, idx) = _getLength(input, idx);
@@ -161,7 +163,6 @@ library Compression {
                     retIdx += length;
                     continue;
                 } else if (flag == FLAG_NONZERO) {
-                    uint256 inputIdx;
                     for (uint256 i; i < length; ++i) {
                         inputIdx = i + idx;
                         if (inputIdx == inputLength) break;
