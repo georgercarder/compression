@@ -124,19 +124,19 @@ library Compression {
 
         uint256 inputLength = input.length;
         require(inputLength > 0, "invalid input len.");
-        uint256 isCompressed = uint256(uint8(input[inputLength - 1]));
-        assembly {
-            mstore(input, sub(mload(input), 1))
-        }
-        if (isCompressed == FLAG_IS_NOT_COMPRESSED) return input;
-        --inputLength;
-
-        uint256 totalLength;
-        uint256 length;
-        uint256 idx;
-        uint256 flag;
-
         unchecked {
+            --inputLength;
+            uint256 isCompressed = uint256(uint8(input[inputLength]));
+            assembly {
+                mstore(input, sub(mload(input), 1))
+            }
+            if (isCompressed == FLAG_IS_NOT_COMPRESSED) return input;
+
+            uint256 totalLength;
+            uint256 length;
+            uint256 idx;
+            uint256 flag;
+
             while (idx < inputLength) {
                 flag = uint256(uint8(input[idx])) & FLAG_ZERO_MASK;
                 (length, idx) = _getLength(input, idx);
