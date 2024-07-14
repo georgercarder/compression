@@ -74,7 +74,7 @@ library Compression {
         uint256 start;
         uint256 end;
         uint256 length;
-
+        bool ok = true;
         for (uint256 i; i < idx; ++i) {
             zs = zeroSegments[i];
             end = zs.start;
@@ -83,8 +83,13 @@ library Compression {
 
             retIdx = _setLength(ret, retIdx, length);
             for (uint256 j = start; j < end; ++j) {
+                if (retIdx >= inputLength) {
+                    ok = false;
+                    break;
+                }
                 ret[retIdx++] = input[j];
             }
+            if (!ok) break;
             start = zs.end;
 
             // zeros
@@ -97,8 +102,8 @@ library Compression {
         length = inputLength - zs.end;
         retIdx = _setLength(ret, retIdx, length);
         for (uint256 i = zs.end; i < inputLength; ++i) {
-            ret[retIdx++] = input[i];
             if (retIdx >= inputLength) break;
+            ret[retIdx++] = input[i];
         }
         if (retIdx < inputLength) {
             // compression was favorable
