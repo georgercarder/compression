@@ -113,7 +113,6 @@ library Compression {
             }
         } else {
             // compression was NOT an improvement
-            ret = new bytes(inputLength + 1);
             assembly {
                 mstore(ret, 0)
             }
