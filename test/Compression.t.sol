@@ -5,12 +5,9 @@ import "forge-std/Test.sol";
 import "../src/Compression.sol";
 
 contract CounterTest is Test {
-
-    function setUp() public {
-    }
+    function setUp() public {}
 
     function testXYZ() public {
         // TODO
     }
-
 }
