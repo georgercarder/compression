@@ -44,13 +44,13 @@ contract CounterTest is Test {
         bytes memory ignorant = abi.encode(lyrics);
         uint256 ignorantLength = ignorant.length;
         uint256 gasBefore = gasleft();
-        wall0 = ignorant;
+        wall0 = ignorant; // obviously would use SSTORE2 in real world but want gas benchmark
         uint256 ignorantStorageGasUsed = gasBefore - gasleft();
 
         bytes memory compressed = Compression.compressZeros(ignorant);
         uint256 compressedLength = compressed.length;
         gasBefore = gasleft();
-        wall1 = compressed;
+        wall1 = compressed; // obviously would use SSTORE2 in real world but wanted gas benchmark
         uint256 compressedStorageGasUsed = gasBefore - gasleft();
 
         console.log("%d ignorantLength", ignorantLength);
