@@ -25,13 +25,11 @@ library Compression {
     // just compresses all zeros
     function compressZeros(bytes memory input) internal pure returns (bytes memory ret) {
         uint256 inputLength = input.length;
-        ret = new bytes(inputLength + 1);
-        uint256 retIdx;
-
-        uint256 idx;
+        ret = new bytes(3 * inputLength); // well over to prevent overflow errors
 
         // first find consecutive zeros
 
+        uint256 idx;
         uint256 _byte;
         bool inZeroSegment;
         Segment[] memory zeroSegments = new Segment[](inputLength);
@@ -75,6 +73,7 @@ library Compression {
         uint256 end;
         uint256 length;
         bool ok = true;
+        uint256 retIdx;
         for (uint256 i; i < idx; ++i) {
             zs = zeroSegments[i];
             end = zs.start;
@@ -97,14 +96,16 @@ library Compression {
             length = zs.end - zs.start;
             retIdx = _setLength(ret, retIdx, length);
         }
-
-        ret[retIdx] = bytes1(uint8(FLAG_NONZERO));
         length = inputLength - zs.end;
-        retIdx = _setLength(ret, retIdx, length);
-        for (uint256 i = zs.end; i < inputLength; ++i) {
-            if (retIdx >= inputLength) break;
-            ret[retIdx++] = input[i];
+        if (length > 0) {
+            ret[retIdx] = bytes1(uint8(FLAG_NONZERO));
+            retIdx = _setLength(ret, retIdx, length);
+            for (uint256 i = zs.end; i < inputLength; ++i) {
+                if (retIdx >= inputLength) break;
+                ret[retIdx++] = input[i];
+            }
         }
+
         if (retIdx < inputLength) {
             // compression was favorable
             ret[retIdx++] = bytes1(uint8(FLAG_IS_COMPRESSED));
