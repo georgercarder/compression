@@ -3,6 +3,8 @@ pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
 
+import "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+
 import "../src/Compression.sol";
 import "../src/LibPack.sol";
 
@@ -46,6 +48,56 @@ contract LibPackTest is Test {
             for (uint256 i; i < unpacked.length; ++i) {
                 //console.log(unpacked[i], arr[i]);
                 assertEq(unpacked[i], arr[i]);
+            }
+
+            console.log("-----------------");
+            console.log("bottom line tl;dr");
+            console.log("-----------------");
+            console.log("%d standard abi.encoded len", abi.encode(arr).length);
+            console.log("%d packed and compressed len", compressed.length);
+        }
+    }
+
+    function test_ints() public {
+        uint256 arrLength = 10;
+        uint256 bitsBound = 10;
+        console.log("%d int256[] arr length", arrLength);
+        for (uint256 ii = 1; ii < bitsBound; ++ii) {
+            uint256 maxBits = ii;
+            console.log("%d maxBits", maxBits);
+            int256[] memory arr = new int256[](arrLength);
+            uint256 modulus;
+            for (uint256 i; i < arr.length; ++i) {
+                modulus = ((uint256(keccak256(abi.encode(i + 1))) % (2 ** maxBits)) + 1);
+                //console.log(modulus);
+                arr[i] = int256(uint256(keccak256(abi.encode(i))) % modulus);
+                if (modulus % 2 == 0) arr[i] *= -1;
+            }
+            uint256 gasBefore = gasleft();
+            bytes memory packed = LibPack.packInt256s(arr);
+            console.log("%d pack gas used", gasBefore - gasleft());
+
+            gasBefore = gasleft();
+            bytes memory compressed = Compression.compressZeros(packed);
+            console.log("%d compressed gas used", gasBefore - gasleft());
+
+            console.log("%d abi.encoded len", abi.encode(arr).length);
+            console.log("%d packed len", packed.length);
+            console.log("%d compressed len", compressed.length);
+
+            gasBefore = gasleft();
+            bytes memory decompressed = Compression.decompressZeros(compressed);
+            console.log("%d decompressed gas used", gasBefore - gasleft());
+
+            gasBefore = gasleft();
+            int256[] memory unpacked = LibPack.unpackBytesIntoInt256s(decompressed);
+            console.log("%d unpack gas used", gasBefore - gasleft());
+            assertEq(unpacked.length, arr.length);
+            for (uint256 i; i < unpacked.length; ++i) {
+                assertEq(
+                    keccak256(bytes(Strings.toStringSigned(unpacked[i]))),
+                    keccak256(bytes(Strings.toStringSigned(arr[i])))
+                );
             }
 
             console.log("-----------------");
