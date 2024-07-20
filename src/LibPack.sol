@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: VPL - VIRAL PUBLIC LICENSE
 pragma solidity ^0.8.25;
 
 import "lib/solady/src/utils/LibBit.sol";
@@ -69,7 +69,6 @@ library LibPack {
             }
             uint256 bound = maxIdxMSB / 8 + 1;
             ret = new bytes(arr.length * bound + 3 + polarityRodLength); // +1 for "len" of polarity rod + polarity rod length
-            //ret = new bytes(arr.length * bound + 1);
             uint256 retIdx;
             ret[retIdx++] = bytes1(uint8(bound));
             ret[retIdx++] = bytes1(uint8(polarityRodLength));
@@ -100,7 +99,7 @@ library LibPack {
                 for (uint256 j; j < bound; ++j) {
                     n |= (uint256(uint8(packed[polarityRodLength + 1 + idx++])) << (8 * j));
                 }
-                ret[i] = int256(n); // TODO moar
+                ret[i] = int256(n);
                 if ((uint256(uint8(packed[3 + i / 8])) >> (i % 8)) & 0x01 == 1) {
                     ret[i] *= -1;
                 }
