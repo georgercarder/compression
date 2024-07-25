@@ -2,7 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../src/Compression.sol";
+
+import "../src/Compression_DEPRECATED.sol";
+import "../src/LibCompression.sol";
 
 contract CounterTest is Test {
     bytes public wall0;
@@ -47,7 +49,9 @@ contract CounterTest is Test {
         wall0 = ignorant; // obviously would use SSTORE2 in real world but want gas benchmark
         uint256 ignorantStorageGasUsed = gasBefore - gasleft();
 
-        bytes memory compressed = Compression.compressZeros(ignorant);
+        gasBefore = gasleft();
+        bytes memory compressed = Compression_DEPRECATED.compressZeros(ignorant);
+        console.log("%d compressed gas used", gasBefore - gasleft());
         uint256 compressedLength = compressed.length;
         gasBefore = gasleft();
         wall1 = compressed; // obviously would use SSTORE2 in real world but wanted gas benchmark
@@ -59,7 +63,47 @@ contract CounterTest is Test {
         console.log("%d compressedLength", compressedLength);
         console.log("%d compressedStorageGasUsed", compressedStorageGasUsed);
 
-        bytes memory decompressed = Compression.decompressZeros(compressed);
+        gasBefore = gasleft();
+        bytes memory decompressed = Compression_DEPRECATED.decompressZeros(compressed);
+        console.log("%d decompressed gas used", gasBefore - gasleft());
+        assertEq(keccak256(decompressed), keccak256(ignorant));
+    }
+
+    function test_newCompression() public {
+        string[] memory lyrics = getLyrics();
+
+        bytes memory ignorant = abi.encode(lyrics);
+        uint256 ignorantLength = ignorant.length;
+        uint256 gasBefore = gasleft();
+        wall0 = ignorant; // obviously would use SSTORE2 in real world but want gas benchmark
+        uint256 ignorantStorageGasUsed = gasBefore - gasleft();
+
+        gasBefore = gasleft();
+        bytes memory compressed = LibCompression.compressZeros(ignorant);
+        console.log("%d compressed gas used", gasBefore - gasleft());
+        uint256 compressedLength = compressed.length;
+        console.log("%d og length", ignorant.length);
+        console.log("%d compressedLength", compressedLength);
+        gasBefore = gasleft();
+        wall1 = compressed; // obviously would use SSTORE2 in real world but wanted gas benchmark
+        uint256 compressedStorageGasUsed = gasBefore - gasleft();
+
+        console.log("%d ignorantLength", ignorantLength);
+        console.log("%d ignorantStorageGasUsed", ignorantStorageGasUsed);
+
+        console.log("%d compressedLength", compressedLength);
+        console.log("%d compressedStorageGasUsed", compressedStorageGasUsed);
+
+        gasBefore = gasleft();
+        bytes memory decompressed = LibCompression.decompressZeros(compressed);
+        console.log("%d decompressed gas used", gasBefore - gasleft());
+        console.log(decompressed.length, ignorant.length);
+        console.log("start.. debug");
+        /*
+        for (uint256 i; i < decompressed.length; ++i) {
+            console.log(uint256(uint8(decompressed[i])), uint256(uint8(ignorant[i]))); 
+        }
+        */
         assertEq(keccak256(decompressed), keccak256(ignorant));
     }
 }

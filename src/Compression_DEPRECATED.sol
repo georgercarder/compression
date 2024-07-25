@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: VPL - VIRAL PUBLIC LICENSE
 pragma solidity ^0.8.25;
 
-library Compression {
+library Compression_DEPRECATED {
     struct Segment {
         uint256 start;
         uint256 end;
