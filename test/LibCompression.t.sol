@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 
-import "../src/Compression_DEPRECATED.sol";
 import "../src/LibCompression.sol";
 
 contract CounterTest is Test {
@@ -38,35 +37,6 @@ contract CounterTest is Test {
         lyrics[21] = "People runnin' 'cause they're scared";
         lyrics[22] = "The people better go and beware";
         lyrics[23] = "No! No! Please, no!";
-    }
-
-    function test() public {
-        string[] memory lyrics = getLyrics();
-
-        bytes memory ignorant = abi.encode(lyrics);
-        uint256 ignorantLength = ignorant.length;
-        uint256 gasBefore = gasleft();
-        wall0 = ignorant; // obviously would use SSTORE2 in real world but want gas benchmark
-        uint256 ignorantStorageGasUsed = gasBefore - gasleft();
-
-        gasBefore = gasleft();
-        bytes memory compressed = Compression_DEPRECATED.compressZeros(ignorant);
-        console.log("%d compressed gas used", gasBefore - gasleft());
-        uint256 compressedLength = compressed.length;
-        gasBefore = gasleft();
-        wall1 = compressed; // obviously would use SSTORE2 in real world but wanted gas benchmark
-        uint256 compressedStorageGasUsed = gasBefore - gasleft();
-
-        console.log("%d ignorantLength", ignorantLength);
-        console.log("%d ignorantStorageGasUsed", ignorantStorageGasUsed);
-
-        console.log("%d compressedLength", compressedLength);
-        console.log("%d compressedStorageGasUsed", compressedStorageGasUsed);
-
-        gasBefore = gasleft();
-        bytes memory decompressed = Compression_DEPRECATED.decompressZeros(compressed);
-        console.log("%d decompressed gas used", gasBefore - gasleft());
-        assertEq(keccak256(decompressed), keccak256(ignorant));
     }
 
     function test_newCompression() public {

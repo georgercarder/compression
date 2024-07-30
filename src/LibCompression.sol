@@ -2,6 +2,7 @@
 pragma solidity ^0.8.25;
 
 import "./LibPack.sol";
+import "./Append.sol";
 
 library LibCompression {
     uint256 constant FLAG_IS_NOT_COMPRESSED = 0x1;
@@ -148,33 +149,5 @@ library LibCompression {
                 mstore(ret, ogLength)
             }
         } // uc
-    }
-
-    // cheaper than bytes concat :)
-    function _append(bytes memory dst, bytes memory src) private pure {
-        assembly {
-            // resize
-
-            let priorLength := mload(dst)
-
-            mstore(dst, add(priorLength, mload(src)))
-
-            // copy
-            mcopy(add(dst, add(0x20, priorLength)), add(src, 0x20), mload(src))
-        }
-    }
-
-    // assumes dev is not stupid and startIdx < endIdx
-    function _appendSubstring(bytes memory dst, bytes memory src, uint256 startIdx, uint256 endIdx) private pure {
-        assembly {
-            // resize
-
-            let priorLength := mload(dst)
-            let substringLength := sub(endIdx, startIdx)
-            mstore(dst, add(priorLength, substringLength))
-
-            // copy
-            mcopy(add(dst, add(0x20, priorLength)), add(src, add(0x20, startIdx)), substringLength)
-        }
     }
 }

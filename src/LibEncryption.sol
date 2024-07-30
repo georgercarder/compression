@@ -2,6 +2,7 @@
 pragma solidity ^0.8.25;
 
 import "./LibPack.sol";
+import "./Append.sol";
 
 // see https://medium.com/asecuritysite-when-bob-met-alice/how-to-do-aes-on-a-blockchain-without-consuming-too-much-gas-580e7226b26b
 
@@ -113,33 +114,5 @@ library LibEncryption {
     function _min(uint256 a, uint256 b) private pure returns (uint256) {
         if (a < b) return a;
         return b;
-    }
-
-    // cheaper than bytes concat :)
-    function _append(bytes memory dst, bytes memory src) private pure {
-        assembly {
-            // resize
-
-            let priorLength := mload(dst)
-
-            mstore(dst, add(priorLength, mload(src)))
-
-            // copy
-            mcopy(add(dst, add(0x20, priorLength)), add(src, 0x20), mload(src))
-        }
-    }
-
-    // assumes dev is not stupid and startIdx < endIdx
-    function _appendSubstring(bytes memory dst, bytes memory src, uint256 startIdx, uint256 endIdx) private pure {
-        assembly {
-            // resize
-
-            let priorLength := mload(dst)
-            let substringLength := sub(endIdx, startIdx)
-            mstore(dst, add(priorLength, substringLength))
-
-            // copy
-            mcopy(add(dst, add(0x20, priorLength)), add(src, add(0x20, startIdx)), substringLength)
-        }
     }
 }
