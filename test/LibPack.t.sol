@@ -255,4 +255,56 @@ contract LibPackTest is Test {
             assertEq(__at, _at);
         }
     }
+
+    function getLyrics() public returns (string[] memory lyrics) {
+        lyrics = new string[](24);
+        lyrics[0] = "[Instrumental Intro]";
+        lyrics[1] = "";
+        lyrics[2] = "[Riff]";
+        lyrics[3] = "";
+        lyrics[4] = "[Verse 1]";
+        lyrics[5] = "What is this that stands before me?";
+        lyrics[6] = "Figure in black which points at me";
+        lyrics[7] = "Turn 'round quick and start to run";
+        lyrics[8] = "Find out I'm the chosen one";
+        lyrics[9] = "Oh, no!";
+        lyrics[10] = "";
+        lyrics[11] = "[Verse 2]";
+        lyrics[12] = "Big black shape with eyes of fire";
+        lyrics[13] = "Tellin' people their desire";
+        lyrics[14] = "Satan's sittin' there, he's smilin'";
+        lyrics[15] = "Watches those flames get higher and higher";
+        lyrics[16] = "Oh, no! No! Please, God, help me!";
+        lyrics[17] = "";
+        lyrics[18] = "[Outro]";
+        lyrics[19] = "Is it the end, my friend?";
+        lyrics[20] = "Satan's comin' 'round the bend";
+        lyrics[21] = "People runnin' 'cause they're scared";
+        lyrics[22] = "The people better go and beware";
+        lyrics[23] = "No! No! Please, no!";
+    }
+
+    function test_packBytes() public {
+        string[] memory lyrics = getLyrics();
+        bytes[] memory bLyrics;
+        assembly {
+            bLyrics := lyrics
+        }
+
+        bytes memory ignorantPacked = abi.encode(lyrics);
+        console.log("%d ignorant encoded len", ignorantPacked.length);
+        uint256 gasBefore = gasleft();
+        bytes[] memory ignorantUnpacked = abi.decode(ignorantPacked, (bytes[]));
+        console.log("%d ignorant decode gas used", gasBefore - gasleft());
+
+        bytes memory packed = LibPack.packBytesArrs(bLyrics);
+        console.log("%d packed.length", packed.length);
+
+        gasBefore = gasleft();
+        bytes[] memory unpacked = LibPack.unpackBytesIntoBytesArrs(packed);
+        console.log("%d unpack gas used", gasBefore - gasleft());
+        for (uint256 i; i < lyrics.length; ++i) {
+            assertEq(keccak256(unpacked[i]), keccak256(bytes(lyrics[i])));
+        }
+    }
 }

@@ -1,10 +1,72 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: VPL - VIRAL PUBLIC LICENSE
 pragma solidity ^0.8.25;
 
 import "lib/solady/src/utils/LibBit.sol";
 
 library LibPack {
     error InvalidInput_error();
+
+    function packBytesArrs(bytes[] memory arrs) internal pure returns (bytes memory ret) {
+        uint256[] memory positions = new uint256[](arrs.length);
+        uint256 position;
+        for (uint256 i; i < positions.length; ++i) {
+            positions[i] = position;
+            position += arrs[i].length;
+        }
+        bytes memory packedPositions = packUint256s(positions);
+        uint256[] memory lengthPacked = new uint256[](1);
+        lengthPacked[0] = packedPositions.length;
+        bytes memory packedLengthPacked = packUint256s(lengthPacked);
+        ret = new bytes(packedLengthPacked.length + packedPositions.length + position + arrs[arrs.length - 1].length);
+        assembly {
+            mstore(ret, 0)
+        }
+        _append(ret, packedLengthPacked);
+        _append(ret, packedPositions);
+        for (uint256 i; i < arrs.length; ++i) {
+            _append(ret, arrs[i]);
+        }
+    }
+
+    function unpackBytesIntoBytesArrs(bytes memory input) internal pure returns (bytes[] memory ret) {
+        // assumes input is from pack function and thus is well-formed.. meaning overflows are not an issue
+        unchecked {
+            uint256 packedPositionsLength = uint256At(input, 0);
+            uint256 bound = uint256(uint8(input[0]));
+            uint256 scratch = 1 + bound;
+            uint256 start = scratch;
+            bytes memory packedPositions = new bytes(packedPositionsLength);
+            assembly {
+                mstore(packedPositions, 0)
+            }
+            _appendSubstring(packedPositions, input, start, start + packedPositionsLength);
+            uint256[] memory positions = unpackBytesIntoUint256s(packedPositions);
+
+            ret = new bytes[](positions.length);
+            scratch += packedPositionsLength;
+            start = scratch;
+            uint256 position;
+            uint256 end;
+            for (uint256 i; i < positions.length; ++i) {
+                position = positions[i];
+                start += position;
+                if (i == positions.length - 1) {
+                    end = input.length;
+                } else {
+                    end = scratch + positions[i + 1];
+                }
+                bytes memory _ret = new bytes(end - start);
+                assembly {
+                    mstore(_ret, 0)
+                }
+                _appendSubstring(_ret, input, start, end);
+                ret[i] = _ret;
+
+                // reset start
+                start = scratch;
+            }
+        } //uc
+    }
 
     function packUint256s(uint256[] memory arr) internal pure returns (bytes memory ret) {
         uint256 maxIdxMSB; // idx most significant bit
@@ -175,5 +237,33 @@ library LibPack {
                 ret[i] = address(uint160(n));
             }
         } // uc
+    }
+
+    // cheaper than bytes concat :)
+    function _append(bytes memory dst, bytes memory src) private pure {
+        assembly {
+            // resize
+
+            let priorLength := mload(dst)
+
+            mstore(dst, add(priorLength, mload(src)))
+
+            // copy
+            mcopy(add(dst, add(0x20, priorLength)), add(src, 0x20), mload(src))
+        }
+    }
+
+    // assumes dev is not stupid and startIdx < endIdx
+    function _appendSubstring(bytes memory dst, bytes memory src, uint256 startIdx, uint256 endIdx) private pure {
+        assembly {
+            // resize
+
+            let priorLength := mload(dst)
+            let substringLength := sub(endIdx, startIdx)
+            mstore(dst, add(priorLength, substringLength))
+
+            // copy
+            mcopy(add(dst, add(0x20, priorLength)), add(src, add(0x20, startIdx)), substringLength)
+        }
     }
 }

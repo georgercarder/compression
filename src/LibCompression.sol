@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: VPL - VIRAL PUBLIC LICENSE
 pragma solidity ^0.8.25;
 
 import "./LibPack.sol";
