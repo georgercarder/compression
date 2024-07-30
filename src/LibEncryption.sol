@@ -12,7 +12,7 @@ library LibEncryption {
     // creates a streaming cipher of the form h_0|h_1|...|h_n-1
     // where h_i = h(key | nonce | counter)
     // ALWAYS use fresh nonce or else plaintext attack vector
-    function xorEncrypt(bytes32 key, bytes32 nonce, bytes memory data) internal view returns (bytes memory ret) {
+    function xorEncrypt(bytes32 key, bytes32 nonce, bytes memory data) internal pure returns (bytes memory ret) {
         uint256 length = (data.length % 32 == 0) ? data.length : 32 * (data.length / 32 + 1);
         bytes memory boundedData = new bytes(length + 1);
         boundedData[0] = 0x20;
@@ -69,7 +69,7 @@ library LibEncryption {
 
     // the inverse of `xorEncrypt`
     // assumes input is output of `xorEncrypt`
-    function xorDecrypt(bytes32 key, bytes memory encrypted) internal view returns (bytes memory ret) {
+    function xorDecrypt(bytes32 key, bytes memory encrypted) internal pure returns (bytes memory ret) {
         bytes memory bKey = new bytes(32);
         assembly {
             mstore(add(bKey, 0x20), key)
