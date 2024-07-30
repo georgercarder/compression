@@ -36,28 +36,21 @@ library LibEncryption {
         assembly {
             bytes32Data := uintDataLengthed
         }
-        bytes memory bKey = new bytes(32);
-        assembly {
-            mstore(add(bKey, 0x20), key)
-        }
         bytes memory bNonce = new bytes(32);
         assembly {
             mstore(add(bNonce, 0x20), nonce)
         }
-        bytes memory bCtr = new bytes(32);
         bytes memory preHash = new bytes(96); // key, nonce, ctr
+        assembly {
+            mstore(add(preHash, 0x20), key)
+            mstore(add(preHash, 0x40), nonce)
+        }
         bytes32 hash;
         for (uint256 i; i < uintData.length; ++i) {
             assembly {
-                mstore(preHash, 0)
+                mstore(add(preHash, 0x60), i)
+                hash := keccak256(add(preHash, 0x20), 0x60)
             }
-            assembly {
-                mstore(add(bCtr, 0x20), i)
-            }
-            _append(preHash, bKey);
-            _append(preHash, bNonce);
-            _append(preHash, bCtr);
-            hash = keccak256(preHash);
 
             bytes32Data[i] = hash ^ bytes32Data[i];
         }
@@ -70,10 +63,6 @@ library LibEncryption {
     // the inverse of `xorEncrypt`
     // assumes input is output of `xorEncrypt`
     function xorDecrypt(bytes32 key, bytes memory encrypted) internal pure returns (bytes memory ret) {
-        bytes memory bKey = new bytes(32);
-        assembly {
-            mstore(add(bKey, 0x20), key)
-        }
         bytes[] memory arrs = LibPack.unpackBytesIntoBytesArrs(encrypted);
         bytes memory bNonce = arrs[0];
         bytes memory ciphertext = arrs[1];
@@ -83,8 +72,11 @@ library LibEncryption {
         assembly {
             bytes32Data := uintDataLengthed
         }
-        bytes memory bCtr = new bytes(32);
         bytes memory preHash = new bytes(96); // key, nonce, ctr
+        assembly {
+            mstore(add(preHash, 0x20), key)
+            mstore(add(preHash, 0x40), mload(add(bNonce, 0x20)))
+        }
         bytes32 hash;
         unchecked {
             for (uint256 i; i < uintDataLengthed.length; ++i) {
@@ -92,22 +84,18 @@ library LibEncryption {
                     mstore(preHash, 0)
                 }
                 assembly {
-                    mstore(add(bCtr, 0x20), i)
+                    mstore(add(preHash, 0x60), i)
+                    hash := keccak256(add(preHash, 0x20), 0x60)
                 }
-                _append(preHash, bKey);
-                _append(preHash, bNonce);
-                _append(preHash, bCtr);
-                hash = keccak256(preHash);
 
                 bytes32Data[i] = hash ^ bytes32Data[i];
             }
             uint256 length = uintDataLengthed[uintDataLengthed.length - 1];
-            bytes memory boundedData = LibPack.packUint256s(uintDataLengthed);
             ret = new bytes(length);
             assembly {
                 mstore(ret, 0)
             }
-            _appendSubstring(ret, boundedData, 1, length + 1);
+            _appendSubstring(ret, LibPack.packUint256s(uintDataLengthed), 1, length + 1);
         } // uc
     }
 
