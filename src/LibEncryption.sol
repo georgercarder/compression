@@ -81,9 +81,6 @@ library LibEncryption {
         unchecked {
             for (uint256 i; i < uintDataLengthed.length; ++i) {
                 assembly {
-                    mstore(preHash, 0)
-                }
-                assembly {
                     mstore(add(preHash, 0x60), i)
                     hash := keccak256(add(preHash, 0x20), 0x60)
                 }
