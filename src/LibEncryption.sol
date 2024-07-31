@@ -98,9 +98,4 @@ library LibEncryption {
             _appendSubstring(ret, LibPack.packUint256s(uintDataLengthed), 1, length + 1);
         } // uc
     }
-
-    function _min(uint256 a, uint256 b) private pure returns (uint256) {
-        if (a < b) return a;
-        return b;
-    }
 }
