@@ -2,7 +2,17 @@
 
 VPL George R. Carder 2023
 
-compress the shit out of a bytes array. in this case "shit" is "zeros".
+Library starting with LibCompression but now contains other utilities including:
+
+- `LibCompression.sol`
+- `LibDynamicBuffer.sol`
+- `LibEncryption.sol`
+- `LibPack.sol`
+
+
+this repo started with the statment:
+
+`compress the shit out of a bytes array. in this case "shit" is "zeros".`
 
 
 basic benchmarking:
