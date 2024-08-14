@@ -7,8 +7,8 @@ library LibDynamicBuffer {
     struct DynamicBuffer {
         bytes processed;
         uint256 aggregateIdx;
-        LinkedBuffer linkedBufferStart;
-        LinkedBuffer linkedBufferEnd;
+        LinkedBuffer start;
+        LinkedBuffer end;
     }
 
     struct LinkedBuffer {
@@ -18,7 +18,7 @@ library LibDynamicBuffer {
 
     function newDynamicBuffer() internal pure returns (DynamicBuffer memory ret) {
         LinkedBuffer memory first;
-        ret = DynamicBuffer({processed: bytes(""), aggregateIdx: 0, linkedBufferStart: first, linkedBufferEnd: first});
+        ret = DynamicBuffer({processed: bytes(""), aggregateIdx: 0, start: first, end: first});
     }
 
     function getBuffer(DynamicBuffer memory db) internal pure returns (bytes memory) {
@@ -31,8 +31,8 @@ library LibDynamicBuffer {
             db.aggregateIdx += data.length;
             LinkedBuffer[] memory next = new LinkedBuffer[](1);
             next[0].buffer = data;
-            db.linkedBufferEnd.next = next;
-            db.linkedBufferEnd = next[0];
+            db.end.next = next;
+            db.end = next[0];
         } // uc
     }
 
@@ -53,12 +53,12 @@ library LibDynamicBuffer {
             }
             _append(newProcessed, db.processed);
 
-            _update(newProcessed, db.linkedBufferStart.next);
+            _update(newProcessed, db.start.next);
             LinkedBuffer memory first;
             db.processed = newProcessed;
             db.aggregateIdx = 0;
-            db.linkedBufferStart = first;
-            db.linkedBufferEnd = first;
+            db.start = first;
+            db.end = first;
         } // uc
     }
 
