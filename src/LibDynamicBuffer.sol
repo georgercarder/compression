@@ -27,11 +27,13 @@ library LibDynamicBuffer {
     }
 
     function p(DynamicBuffer memory db, bytes memory data) internal pure {
-        db.aggregateIdx += data.length;
-        LinkedBuffer[] memory next = new LinkedBuffer[](1);
-        next[0].buffer = data;
-        db.linkedBufferEnd.next = next;
-        db.linkedBufferEnd = next[0];
+        unchecked {
+            db.aggregateIdx += data.length;
+            LinkedBuffer[] memory next = new LinkedBuffer[](1);
+            next[0].buffer = data;
+            db.linkedBufferEnd.next = next;
+            db.linkedBufferEnd = next[0];
+        } // uc
     }
 
     function p(DynamicBuffer memory db, bytes[] memory datas) internal pure {
