@@ -5,13 +5,21 @@ VPL George R. Carder 2023
 Library starting with LibCompression but now contains other utilities including:
 
 - `LibCompression.sol` 
+    
     -- compression option for data known to contain many zeros
+
 - `LibDynamicBuffer.sol` 
+    
     -- more performant than Solady's DynamicBufferLib for bytes arrays! 
+
     -- but less performant with primitive data types
+
 - `LibEncryption.sol`
+
     -- xor streaming cipher!!!
+
 - `LibPack.sol`
+
     -- efficiently pack/unpack arrays of various types
 
 
