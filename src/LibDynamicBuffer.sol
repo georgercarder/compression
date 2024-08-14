@@ -66,16 +66,4 @@ library LibDynamicBuffer {
         _append(buffer, _lb.buffer);
         _update(buffer, _lb.next);
     }
-
-    // inspired by Solady... we love you Vectorized!!!!
-    // although NOT temporary as the buffers will "sit" and accumulate before they are updated
-    function _single(uint256 data, uint256 n) private pure returns (bytes memory ret) {
-        assembly {
-            ret := add(mload(0x40), add(n, 0x20))
-            mstore(add(ret, n), data)
-            mstore(ret, n)
-
-            mstore(0x40, add(add(ret, 0x20), n))
-        }
-    }
 }
