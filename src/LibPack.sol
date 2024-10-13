@@ -183,15 +183,12 @@ library LibPack {
         if (packed.length < 1) revert InvalidInput_error();
         uint256 polaritiesPackedLength = uint256At(packed, 0);
         uint256 packedUintsLength = packed.length - polaritiesPackedLength;
-        bytes memory packedUints = new bytes(packedUintsLength);
         bytes memory packedPolarities = new bytes(polaritiesPackedLength);
         assembly {
-            mstore(packedUints, 0)
             mstore(packedPolarities, 0)
         }
-        _appendSubstring(packedUints, packed, 0, packedUintsLength);
         _appendSubstring(packedPolarities, packed, packedUintsLength, packed.length);
-        ret = int256(uint256At(packedUints, idx + 1));
+        ret = int256(uint256At(packed, idx + 1));
         uint256 polarity = uint256At(packedPolarities, idx);
         if (polarity > 0) {
             ret *= -1;
