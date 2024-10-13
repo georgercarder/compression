@@ -3,8 +3,6 @@ pragma solidity ^0.8.25;
 
 import "lib/solady/src/utils/LibBit.sol";
 
-import "lib/solady/src/utils/LibZip.sol";
-
 import "./Append.sol";
 
 library LibPack {
