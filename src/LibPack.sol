@@ -3,6 +3,8 @@ pragma solidity ^0.8.25;
 
 import "lib/solady/src/utils/LibBit.sol";
 
+import "lib/solady/src/utils/LibZip.sol";
+
 import "./Append.sol";
 
 library LibPack {
@@ -157,63 +159,46 @@ library LibPack {
 
     function packInt256s(int256[] memory arr) internal pure returns (bytes memory ret) {
         uint256 length = arr.length;
-        unchecked {
-            uint256[] memory uints = new uint256[](length + 1);
-            uint256[] memory polarities = new uint256[](length);
-            bool negative;
-            uint256 n;
-            for (uint256 i; i < length; ++i) {
-                (negative, n) = decomposeZ(arr[i]);
-                uints[i + 1] = n;
-                if (negative) polarities[i] = 1;
+        uint256 polarityRodLength = (length / 256 + 1);
+        uint256[] memory pr = new uint256[](polarityRodLength);
+        uint256[] memory us = new uint256[](length);
+        bool negative;
+        uint256 n;
+        for (uint256 i; i < arr.length; ++i) {
+            (negative, n) = decomposeZ(arr[i]);
+            us[i] = n;
+            if (negative) {
+                pr[i / 256] |= 1 << (i % 256);
             }
-            bytes memory polaritiesPacked = packUint256s(polarities);
-            uints[0] = polaritiesPacked.length;
-            bytes memory uintsPacked = packUint256s(uints);
-            ret = new bytes(uintsPacked.length + polaritiesPacked.length);
-            assembly {
-                mstore(ret, 0)
-            }
-            _append(ret, uintsPacked);
-            _append(ret, polaritiesPacked);
-        } // uc
+        }
+        bytes[] memory bs = new bytes[](2);
+        bs[0] = packUint256s(pr);
+        bs[1] = packUint256s(us);
+        ret = packBytesArrs(bs);
     }
 
     function int256At(bytes memory packed, uint256 idx) internal pure returns (int256 ret) {
-        if (packed.length < 1) revert InvalidInput_error();
-        uint256 polaritiesPackedLength = uint256At(packed, 0);
-        uint256 packedUintsLength = packed.length - polaritiesPackedLength;
-        bytes memory packedPolarities = new bytes(polaritiesPackedLength);
-        assembly {
-            mstore(packedPolarities, 0)
-        }
-        _appendSubstring(packedPolarities, packed, packedUintsLength, packed.length);
-        ret = int256(uint256At(packed, idx + 1));
-        uint256 polarity = uint256At(packedPolarities, idx);
-        if (polarity > 0) {
+        bytes[] memory bs = unpackBytesIntoBytesArrs(packed);
+        if (bs.length != 2) revert InvalidInput_error();
+        uint256[] memory pr = unpackBytesIntoUint256s(bs[0]);
+        uint256[] memory us = unpackBytesIntoUint256s(bs[1]);
+        if (!(idx < us.length) || !(idx / 256 < pr.length)) revert InvalidInput_error();
+        ret = int256(us[idx]);
+        if ((pr[idx / 256] >> (idx % 256)) & 0x1 == 0x1) {
             ret *= -1;
         }
     }
 
     function unpackBytesIntoInt256s(bytes memory packed) internal pure returns (int256[] memory ret) {
-        if (packed.length < 1) revert InvalidInput_error();
-        uint256 polaritiesPackedLength = uint256At(packed, 0);
-        uint256 packedUintsLength = packed.length - polaritiesPackedLength;
-        bytes memory packedUints = new bytes(packedUintsLength);
-        bytes memory packedPolarities = new bytes(polaritiesPackedLength);
-        assembly {
-            mstore(packedUints, 0)
-            mstore(packedPolarities, 0)
-        }
-        _appendSubstring(packedUints, packed, 0, packedUintsLength);
-        _appendSubstring(packedPolarities, packed, packedUintsLength, packed.length);
-        uint256[] memory uints = unpackBytesIntoUint256s(packedUints);
-        uint256[] memory polarities = unpackBytesIntoUint256s(packedPolarities);
-        ret = new int256[](polarities.length);
-        int256 unit;
-        for (uint256 i; i < ret.length; ++i) {
-            ret[i] = int256(uints[i + 1]);
-            if (polarities[i] == 1) {
+        bytes[] memory bs = unpackBytesIntoBytesArrs(packed);
+        if (bs.length != 2) revert InvalidInput_error();
+        uint256[] memory pr = unpackBytesIntoUint256s(bs[0]);
+        uint256[] memory us = unpackBytesIntoUint256s(bs[1]);
+        uint256 length = us.length;
+        ret = new int256[](length);
+        for (uint256 i; i < length; ++i) {
+            ret[i] = int256(us[i]);
+            if ((pr[i / 256] >> (i % 256)) & 0x1 == 0x1) {
                 ret[i] *= -1;
             }
         }
