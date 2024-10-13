@@ -3,8 +3,6 @@ pragma solidity ^0.8.25;
 
 import "lib/solady/src/utils/LibBit.sol";
 
-import "lib/solady/src/utils/LibZip.sol";
-
 import "./Append.sol";
 
 library LibPack {
@@ -159,48 +157,39 @@ library LibPack {
 
     function packInt256s(int256[] memory arr) internal pure returns (bytes memory ret) {
         uint256 length = arr.length;
-        uint256 polarityRodLength = (length / 256 + 1);
-        uint256[] memory pr = new uint256[](polarityRodLength);
         uint256[] memory us = new uint256[](length);
         bool negative;
         uint256 n;
         for (uint256 i; i < arr.length; ++i) {
             (negative, n) = decomposeZ(arr[i]);
+            n = n << 1;
             us[i] = n;
             if (negative) {
-                pr[i / 256] |= 1 << (i % 256);
+                us[i] |= 0x1;
             }
         }
-        bytes[] memory bs = new bytes[](2);
-        bs[0] = packUint256s(pr);
-        bs[1] = packUint256s(us);
-        ret = packBytesArrs(bs);
+        ret = packUint256s(us);
     }
 
     function int256At(bytes memory packed, uint256 idx) internal pure returns (int256 ret) {
-        bytes[] memory bs = unpackBytesIntoBytesArrs(packed);
-        if (bs.length != 2) revert InvalidInput_error();
-        uint256[] memory pr = unpackBytesIntoUint256s(bs[0]);
-        uint256[] memory us = unpackBytesIntoUint256s(bs[1]);
-        if (!(idx < us.length) || !(idx / 256 < pr.length)) revert InvalidInput_error();
-        ret = int256(us[idx]);
-        if ((pr[idx / 256] >> (idx % 256)) & 0x1 == 0x1) {
-            ret *= -1;
-        }
+        uint256[] memory us = unpackBytesIntoUint256s(packed);
+        uint256 length = us.length;
+        uint256 n;
+        if (!(idx < length)) revert InvalidInput_error();
+        n = us[idx];
+        ret = int256(n >> 1);
+        if (n & 0x1 == 0x1) ret *= -1;
     }
 
     function unpackBytesIntoInt256s(bytes memory packed) internal pure returns (int256[] memory ret) {
-        bytes[] memory bs = unpackBytesIntoBytesArrs(packed);
-        if (bs.length != 2) revert InvalidInput_error();
-        uint256[] memory pr = unpackBytesIntoUint256s(bs[0]);
-        uint256[] memory us = unpackBytesIntoUint256s(bs[1]);
+        uint256[] memory us = unpackBytesIntoUint256s(packed);
         uint256 length = us.length;
         ret = new int256[](length);
+        uint256 n;
         for (uint256 i; i < length; ++i) {
-            ret[i] = int256(us[i]);
-            if ((pr[i / 256] >> (i % 256)) & 0x1 == 0x1) {
-                ret[i] *= -1;
-            }
+            n = us[i];
+            ret[i] = int256(n >> 1);
+            if (n & 0x1 == 0x1) ret[i] *= -1;
         }
     }
 

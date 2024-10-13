@@ -5,7 +5,6 @@ import {Test, console} from "forge-std/Test.sol";
 
 import "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
-import "../src/LibCompression.sol";
 import "../src/LibPack.sol";
 
 contract LibPackTest is Test {
@@ -38,26 +37,9 @@ contract LibPackTest is Test {
             console.log("--");
             */
 
-            gasBefore = gasleft();
-            bytes memory compressed = LibCompression.compressZeros(packed);
-            /*/
-            console.log(uint256(keccak256(packed)));
-            console.log(packed.length);
-            */
-            console.log("%d compressed gas used", gasBefore - gasleft());
-
             console.log("%d abi.encoded len", abi.encode(arr).length);
             console.log("%d packed len", packed.length);
-            console.log("%d compressed len", compressed.length);
             console.log("note: compressed only good when lots of zeros");
-
-            gasBefore = gasleft();
-            bytes memory decompressed = LibCompression.decompressZeros(compressed);
-            /*
-            console.log(uint256(keccak256(decompressed)));
-            console.log(decompressed.length);
-            */
-            console.log("%d decompressed gas used", gasBefore - gasleft());
 
             /*
             console.log("..");
@@ -68,7 +50,7 @@ contract LibPackTest is Test {
             */
 
             gasBefore = gasleft();
-            uint256[] memory unpacked = LibPack.unpackBytesIntoUint256s(decompressed);
+            uint256[] memory unpacked = LibPack.unpackBytesIntoUint256s(packed);
             console.log("%d unpack gas used", gasBefore - gasleft());
             assertEq(unpacked.length, arr.length);
             for (uint256 i; i < unpacked.length; ++i) {
@@ -81,7 +63,6 @@ contract LibPackTest is Test {
             console.log("bottom line tl;dr");
             console.log("-----------------");
             console.log("%d standard abi.encoded len", abi.encode(arr).length);
-            console.log("%d packed and compressed len", compressed.length);
         }
     }
 
@@ -99,24 +80,21 @@ contract LibPackTest is Test {
                 arr[i] = int256(uint256(keccak256(abi.encode(i))) % modulus);
                 if (modulus % 2 == 0) arr[i] *= -1;
             }
+            console.log("%d input len", arr.length);
             uint256 gasBefore = gasleft();
             bytes memory packed = LibPack.packInt256s(arr);
+
             console.log("%d pack gas used", gasBefore - gasleft());
 
             gasBefore = gasleft();
-            bytes memory compressed = LibCompression.compressZeros(packed);
-            console.log("%d compressed gas used", gasBefore - gasleft());
+            abi.encode(arr);
+            console.log("%d abiencode gas used", gasBefore - gasleft());
 
             console.log("%d abi.encoded len", abi.encode(arr).length);
             console.log("%d packed len", packed.length);
-            console.log("%d compressed len", compressed.length);
 
             gasBefore = gasleft();
-            bytes memory decompressed = LibCompression.decompressZeros(compressed);
-            console.log("%d decompressed gas used", gasBefore - gasleft());
-
-            gasBefore = gasleft();
-            int256[] memory unpacked = LibPack.unpackBytesIntoInt256s(decompressed);
+            int256[] memory unpacked = LibPack.unpackBytesIntoInt256s(packed);
             console.log("%d unpack gas used", gasBefore - gasleft());
             assertEq(unpacked.length, arr.length);
             for (uint256 i; i < unpacked.length; ++i) {
@@ -134,14 +112,12 @@ contract LibPackTest is Test {
             console.log("bottom line tl;dr");
             console.log("-----------------");
             console.log("%d standard abi.encoded len", abi.encode(arr).length);
-            console.log("%d packed and compressed len", compressed.length);
         }
     }
 
     function test_addresses() public {
         //uint256 arrLength = 10;
         address[] memory arr = new address[](arrLength);
-        uint256 modulus;
         for (uint256 i; i < arr.length; ++i) {
             arr[i] = address(uint160(uint256(keccak256(abi.encode(i)))));
         }
@@ -149,20 +125,11 @@ contract LibPackTest is Test {
         bytes memory packed = LibPack.packAddresses(arr);
         console.log("%d pack gas used", gasBefore - gasleft());
 
-        gasBefore = gasleft();
-        bytes memory compressed = LibCompression.compressZeros(packed);
-        console.log("%d compressed gas used", gasBefore - gasleft());
-
         console.log("%d abi.encoded len", abi.encode(arr).length);
         console.log("%d packed len", packed.length);
-        console.log("%d compressed len", compressed.length);
 
         gasBefore = gasleft();
-        bytes memory decompressed = LibCompression.decompressZeros(compressed);
-        console.log("%d decompressed gas used", gasBefore - gasleft());
-
-        gasBefore = gasleft();
-        address[] memory unpacked = LibPack.unpackBytesIntoAddresses(decompressed);
+        address[] memory unpacked = LibPack.unpackBytesIntoAddresses(packed);
         console.log("%d unpack gas used", gasBefore - gasleft());
         assertEq(unpacked.length, arr.length);
         for (uint256 i; i < unpacked.length; ++i) {
@@ -176,7 +143,6 @@ contract LibPackTest is Test {
         console.log("bottom line tl;dr");
         console.log("-----------------");
         console.log("%d standard abi.encoded len", abi.encode(arr).length);
-        console.log("%d packed and compressed len", compressed.length);
     }
 
     function test_benchmarkAt() public {
@@ -208,6 +174,7 @@ contract LibPackTest is Test {
             gasBefore = gasleft();
             uint256[] memory _decoded = LibPack.unpackBytesIntoUint256s(packed);
             console.log("%d unpacked gas used", gasBefore - gasleft());
+            (_decoded); // shh compiler
 
             gasBefore = gasleft();
             uint256 __at = LibPack.uint256At(packed, 3);
@@ -247,6 +214,7 @@ contract LibPackTest is Test {
             gasBefore = gasleft();
             int256[] memory _decoded = LibPack.unpackBytesIntoInt256s(packed);
             console.log("%d unpacked gas used", gasBefore - gasleft());
+            (_decoded); // shh compiler
 
             gasBefore = gasleft();
             int256 __at = LibPack.int256At(packed, 3);
@@ -256,7 +224,7 @@ contract LibPackTest is Test {
         }
     }
 
-    function getLyrics() public returns (string[] memory lyrics) {
+    function getLyrics() public pure returns (string[] memory lyrics) {
         lyrics = new string[](24);
         lyrics[0] = "[Instrumental Intro]";
         lyrics[1] = "";
@@ -291,11 +259,14 @@ contract LibPackTest is Test {
             bLyrics := lyrics
         }
 
+        assertEq(keccak256(bLyrics[10]), keccak256(new bytes(0)));
+
         bytes memory ignorantPacked = abi.encode(lyrics);
         console.log("%d ignorant encoded len", ignorantPacked.length);
         uint256 gasBefore = gasleft();
         bytes[] memory ignorantUnpacked = abi.decode(ignorantPacked, (bytes[]));
         console.log("%d ignorant decode gas used", gasBefore - gasleft());
+        (ignorantUnpacked); // shh compiler
 
         bytes memory packed = LibPack.packBytesArrs(bLyrics);
         console.log("%d packed.length", packed.length);
@@ -306,5 +277,28 @@ contract LibPackTest is Test {
         for (uint256 i; i < lyrics.length; ++i) {
             assertEq(keccak256(unpacked[i]), keccak256(bytes(lyrics[i])));
         }
+    }
+
+    // verdict is that abi.encode is cheaper in gas
+    function test_benchmark_vs_abiEncode() public view {
+        uint256[] memory arr = new uint256[](10);
+        uint256 maxBits = 8;
+        uint256 modulus;
+        for (uint256 i; i < arr.length; ++i) {
+            modulus = ((uint256(keccak256(abi.encode(i + 1))) % (2 ** maxBits)) + 1);
+            //console.log(modulus);
+            arr[i] = uint256(keccak256(abi.encode(i))) % modulus;
+        }
+
+        uint256 gasBefore = gasleft();
+        bytes memory e = abi.encode(arr);
+        console.log("%d abi.encode gas", gasBefore - gasleft());
+
+        gasBefore = gasleft();
+        bytes memory p = LibPack.packUint256s(arr);
+        console.log("%d packUint256s gas", gasBefore - gasleft());
+
+        console.log("%d e len", e.length);
+        console.log("%d p len", p.length);
     }
 }
