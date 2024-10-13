@@ -23,7 +23,7 @@ Library starting with LibCompression but now contains other utilities including:
     -- efficiently pack/unpack arrays of various types
 
 
-this repo started with the statment:
+this repo started with the statement:
 
 `compress the shit out of a bytes array. in this case "shit" is "zeros".`
 

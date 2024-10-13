@@ -1,7 +1,9 @@
-// SPDX-License-Identifier: VPL - VIRAL PUBLIC LICENSE
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.25;
 
 import "lib/solady/src/utils/LibBit.sol";
+
+import "lib/solady/src/utils/LibZip.sol";
 
 import "./Append.sol";
 
@@ -28,6 +30,34 @@ library LibPack {
         for (uint256 i; i < arrs.length; ++i) {
             _append(ret, arrs[i]);
         }
+    }
+
+    function bytesAt(bytes memory input, uint256 idx) internal pure returns (bytes memory ret) {
+        uint256 packedPositionsLength = uint256At(input, 0);
+        if (packedPositionsLength < 1) revert InvalidInput_error();
+        uint256 bound = uint256(uint8(input[0]));
+        uint256 scratch = 1 + bound;
+        uint256 start = scratch;
+        bytes memory packedPositions = new bytes(packedPositionsLength);
+        assembly {
+            mstore(packedPositions, 0)
+        }
+        _appendSubstring(packedPositions, input, start, start + packedPositionsLength);
+        uint256[] memory positions = unpackBytesIntoUint256s(packedPositions);
+
+        uint256 position = positions[idx];
+        uint256 end;
+        start += position;
+        if (idx == positions.length - 1) {
+            end = input.length;
+        } else {
+            end = scratch + positions[idx + 1];
+        }
+        ret = new bytes(end - start);
+        assembly {
+            mstore(ret, 0)
+        }
+        _appendSubstring(ret, input, start, end);
     }
 
     function unpackBytesIntoBytesArrs(bytes memory input) internal pure returns (bytes[] memory ret) {
@@ -127,76 +157,71 @@ library LibPack {
         return (false, uint256(z));
     }
 
-    // 2032 = 254*8 len array is max capacity lol
     function packInt256s(int256[] memory arr) internal pure returns (bytes memory ret) {
-        uint256 maxIdxMSB; // idx most significant bit
-        uint256 idxMSB;
-        uint256 n;
-        bool negative;
-        uint256 polarityRodLength = (arr.length / 8 + 1);
-        if (polarityRodLength > 255) revert("cannot support array of this size");
+        uint256 length = arr.length;
         unchecked {
-            for (uint256 i; i < arr.length; ++i) {
-                (, n) = decomposeZ(arr[i]);
-                idxMSB = LibBit.fls(n);
-                if (idxMSB == 256) continue;
-                if (idxMSB > maxIdxMSB) maxIdxMSB = idxMSB;
-            }
-            uint256 bound = maxIdxMSB / 8 + 1;
-            ret = new bytes(arr.length * bound + 3 + polarityRodLength); // +1 for "len" of polarity rod + polarity rod length
-            //ret = new bytes(arr.length * bound + 1);
-            uint256 retIdx;
-            ret[retIdx++] = bytes1(uint8(bound));
-            ret[retIdx++] = bytes1(uint8(polarityRodLength));
-            for (uint256 i; i < arr.length; ++i) {
+            uint256[] memory uints = new uint256[](length + 1);
+            uint256[] memory polarities = new uint256[](length);
+            bool negative;
+            uint256 n;
+            for (uint256 i; i < length; ++i) {
                 (negative, n) = decomposeZ(arr[i]);
-                if (negative) {
-                    // 2 + i/8 + 1
-                    ret[3 + i / 8] = bytes1(uint8(ret[3 + i / 8]) | uint8(1 << (i % 8)));
-                }
-                for (uint256 j; j < bound; ++j) {
-                    ret[polarityRodLength + 1 + retIdx++] = bytes1(uint8(n >> (8 * j)));
-                }
+                uints[i + 1] = n;
+                if (negative) polarities[i] = 1;
             }
+            bytes memory polaritiesPacked = packUint256s(polarities);
+            uints[0] = polaritiesPacked.length;
+            bytes memory uintsPacked = packUint256s(uints);
+            ret = new bytes(uintsPacked.length + polaritiesPacked.length);
+            assembly {
+                mstore(ret, 0)
+            }
+            _append(ret, uintsPacked);
+            _append(ret, polaritiesPacked);
         } // uc
     }
 
     function int256At(bytes memory packed, uint256 idx) internal pure returns (int256 ret) {
         if (packed.length < 1) revert InvalidInput_error();
-        unchecked {
-            uint256 bound = uint256(uint8(packed[0]));
-            uint256 polarityRodLength = uint256(uint8(packed[1]));
-            ret = -(2 * int256((uint256(uint8(packed[3 + idx / 8])) >> (idx % 8)) & 0x01) - 1);
-            // (0, 1) -> (0, 2) -> (-1, 1) -> (1, -1)
-            idx = idx * bound + 2;
-            uint256 n;
-            for (uint256 j; j < bound; ++j) {
-                n |= (uint256(uint8(packed[polarityRodLength + 1 + idx + j])) << (8 * j));
-            }
-            ret *= int256(n);
-        } // uc
+        uint256 polaritiesPackedLength = uint256At(packed, 0);
+        uint256 packedUintsLength = packed.length - polaritiesPackedLength;
+        bytes memory packedUints = new bytes(packedUintsLength);
+        bytes memory packedPolarities = new bytes(polaritiesPackedLength);
+        assembly {
+            mstore(packedUints, 0)
+            mstore(packedPolarities, 0)
+        }
+        _appendSubstring(packedUints, packed, 0, packedUintsLength);
+        _appendSubstring(packedPolarities, packed, packedUintsLength, packed.length);
+        ret = int256(uint256At(packedUints, idx + 1));
+        uint256 polarity = uint256At(packedPolarities, idx);
+        if (polarity > 0) {
+            ret *= -1;
+        }
     }
 
     function unpackBytesIntoInt256s(bytes memory packed) internal pure returns (int256[] memory ret) {
-        uint256 idx;
         if (packed.length < 1) revert InvalidInput_error();
-        unchecked {
-            uint256 bound = uint256(uint8(packed[idx++]));
-            uint256 polarityRodLength = uint256(uint8(packed[idx++]));
-            ret = new int256[]((packed.length - 3 - polarityRodLength) / bound);
-            if (packed.length < ret.length * bound) revert InvalidInput_error();
-            uint256 n;
-            for (uint256 i; i < ret.length; ++i) {
-                n = 0;
-                for (uint256 j; j < bound; ++j) {
-                    n |= (uint256(uint8(packed[polarityRodLength + 1 + idx++])) << (8 * j));
-                }
-                ret[i] = int256(n);
-                if ((uint256(uint8(packed[3 + i / 8])) >> (i % 8)) & 0x01 == 1) {
-                    ret[i] *= -1;
-                }
+        uint256 polaritiesPackedLength = uint256At(packed, 0);
+        uint256 packedUintsLength = packed.length - polaritiesPackedLength;
+        bytes memory packedUints = new bytes(packedUintsLength);
+        bytes memory packedPolarities = new bytes(polaritiesPackedLength);
+        assembly {
+            mstore(packedUints, 0)
+            mstore(packedPolarities, 0)
+        }
+        _appendSubstring(packedUints, packed, 0, packedUintsLength);
+        _appendSubstring(packedPolarities, packed, packedUintsLength, packed.length);
+        uint256[] memory uints = unpackBytesIntoUint256s(packedUints);
+        uint256[] memory polarities = unpackBytesIntoUint256s(packedPolarities);
+        ret = new int256[](polarities.length);
+        int256 unit;
+        for (uint256 i; i < ret.length; ++i) {
+            ret[i] = int256(uints[i + 1]);
+            if (polarities[i] == 1) {
+                ret[i] *= -1;
             }
-        } // uc
+        }
     }
 
     function packAddresses(address[] memory arr) internal pure returns (bytes memory ret) {
