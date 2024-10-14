@@ -172,11 +172,7 @@ library LibPack {
     }
 
     function int256At(bytes memory packed, uint256 idx) internal pure returns (int256 ret) {
-        uint256[] memory us = unpackBytesIntoUint256s(packed);
-        uint256 length = us.length;
-        uint256 n;
-        if (!(idx < length)) revert InvalidInput_error();
-        n = us[idx];
+        uint256 n = uint256At(packed, idx);
         ret = int256(n >> 1);
         if (n & 0x1 == 0x1) ret *= -1;
     }
