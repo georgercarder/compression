@@ -32,7 +32,6 @@ library LibPack {
 
     function bytesAt(bytes memory input, uint256 idx) internal pure returns (bytes memory ret) {
         uint256 packedPositionsLength = uint256At(input, 0);
-        if (packedPositionsLength < 1) revert InvalidInput_error();
         uint256 bound = uint256(uint8(input[0]));
         uint256 scratch = 1 + bound;
         uint256 start = scratch;
@@ -43,19 +42,30 @@ library LibPack {
         _appendSubstring(packedPositions, input, start, start + packedPositionsLength);
         uint256[] memory positions = unpackBytesIntoUint256s(packedPositions);
 
-        uint256 position = positions[idx];
+        scratch += packedPositionsLength;
+        start = scratch;
+        uint256 position;
         uint256 end;
-        start += position;
-        if (idx == positions.length - 1) {
-            end = input.length;
-        } else {
-            end = scratch + positions[idx + 1];
+        for (uint256 i; i < positions.length; ++i) {
+            position = positions[i];
+            start += position;
+            if (i == positions.length - 1) {
+                end = input.length;
+            } else {
+                end = scratch + positions[i + 1];
+            }
+            if (i == idx) {
+                ret = new bytes(end - start);
+                assembly {
+                    mstore(ret, 0)
+                }
+                _appendSubstring(ret, input, start, end);
+                return ret;
+            }
+
+            // reset start
+            start = scratch;
         }
-        ret = new bytes(end - start);
-        assembly {
-            mstore(ret, 0)
-        }
-        _appendSubstring(ret, input, start, end);
     }
 
     function unpackBytesIntoBytesArrs(bytes memory input) internal pure returns (bytes[] memory ret) {
