@@ -276,6 +276,7 @@ contract LibPackTest is Test {
         console.log("%d unpack gas used", gasBefore - gasleft());
         for (uint256 i; i < lyrics.length; ++i) {
             assertEq(keccak256(unpacked[i]), keccak256(bytes(lyrics[i])));
+            assertEq(keccak256(LibPack.bytesAt(packed, i)), keccak256(bytes(lyrics[i])));
         }
     }
 
